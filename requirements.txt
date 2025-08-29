@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+langchain
+langchain_core
+openai-whisper
+ollama
+fastapi[all]
+python-multipart
+audio-extract
+beautifulsoup4
