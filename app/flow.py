@@ -7,7 +7,7 @@ from app.steps.save_audio_locally import save_audio_locally
 from app.steps.get_audio_transcription import audio_to_text
 from app.steps.claims_extractor import extract_claims
 from app.steps.claim_verifier import verify_claim
-
+from app.steps.responce_generator import generate_responce
 # Setup logging with timestamp
 logging.basicConfig(
     level=logging.INFO,
@@ -122,10 +122,9 @@ async def check_authenticity(url: str):
     relavent_content = []
     for claim in claims:
         content = await get_wed_data(claim['claim'])
-        relavent_content.append({'claim': claim['claim'], 'content': content})
         evidence_list = [result['snippet'] for result in content['results']]
         result = verify_claim(claim['claim'], evidence_list)
-        relavent_content.append({ 'result': result})
+        relavent_content.append({'claim': claim['claim'], 'content': content, 'result': result})
     results['relavent_content'] = relavent_content
     if relavent_content:
         logger.info("Relavent content found")
@@ -133,6 +132,17 @@ async def check_authenticity(url: str):
         logger.error("Failed to find relavent content")
     if not relavent_content:
         fail_msg = {'success': False, 'message': 'Failed to find relavent content'}
+        results['final'] = fail_msg
+        return results
+    formatted_data = [{'claim': item['claim'], 'verfication_result': item['result']} for item in relavent_content]
+    responce = generate_responce(formatted_data)
+    results['responce'] = responce
+    if responce:
+        logger.info("Responce generated")
+    else:
+        logger.error("Failed to generate responce")
+    if not responce:
+        fail_msg = {'success': False, 'message': 'Failed to generate responce'}
         results['final'] = fail_msg
         return results
     return results
