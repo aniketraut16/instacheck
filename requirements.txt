@@ -4,6 +4,7 @@ requests
 ffmpeg-python
 langchain
 langchain_core
+langchain-ollama
 beautifulsoup4
 openai-whisper
 sentence_transformers
