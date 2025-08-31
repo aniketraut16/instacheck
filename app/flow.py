@@ -6,6 +6,7 @@ from app.steps.get_url_from_link import get_link_from_url
 from app.steps.save_audio_locally import save_audio_locally
 from app.steps.get_audio_transcription import audio_to_text
 from app.steps.claims_extractor import extract_claims
+from app.steps.claim_verifier import verify_claim
 
 # Setup logging with timestamp
 logging.basicConfig(
@@ -39,11 +40,6 @@ async def check_authenticity(url: str):
     url_key = url.strip()
     
     results = {}
-
-    # Check if we already have complete results for this URL
-    if url_key in data and data[url_key].get('claims'):
-        logger.info("Found cached results for this URL")
-        return data[url_key]
 
     # Initialize entry for this URL if it doesn't exist
     if url_key not in data:
@@ -113,12 +109,23 @@ async def check_authenticity(url: str):
         fail_msg = {'success': False, 'message': 'Failed to get transcription'}
         results['final'] = fail_msg
         return results
-    claims = extract_claims(transcription)
+    
+    # Check if we already have claims
+    if 'claims' not in data[url_key]:
+        claims = extract_claims(transcription)
+        data[url_key]['claims'] = claims
+        save_data(data)
+    else:
+        claims = data[url_key]['claims']
+        logger.info("Using cached claims")
     logger.info(f" {len(claims)} Claims extracted")
     relavent_content = []
     for claim in claims:
         content = await get_wed_data(claim['claim'])
         relavent_content.append({'claim': claim['claim'], 'content': content})
+        evidence_list = [result['snippet'] for result in content['results']]
+        result = verify_claim(claim['claim'], evidence_list)
+        relavent_content.append({ 'result': result})
     results['relavent_content'] = relavent_content
     if relavent_content:
         logger.info("Relavent content found")
