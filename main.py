@@ -12,5 +12,4 @@ async def process_endpoint(request_data: dict):
 @app.post("/process")
 async def check_authenticity_endpoint(request_data: dict):
     url = request_data.get("url")
-    log = request_data.get("log", False)
-    return await check_authenticity(url, log)
+    return await check_authenticity(url)

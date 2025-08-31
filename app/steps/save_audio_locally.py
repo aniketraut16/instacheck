@@ -1,9 +1,11 @@
 import os
-import ffmpeg
 from audio_extract import extract_audio
 import subprocess
 import requests
 from pathlib import Path
+import logging
+
+logger = logging.getLogger(__name__)
 
 ROOT_DIR = Path.cwd() / "reels"
 VIDEO_DIR = ROOT_DIR / "video"
@@ -24,57 +26,57 @@ def check_ffmpeg_installation() -> bool:
     except (subprocess.CalledProcessError, FileNotFoundError):
         return False
 
-def save_video_and_audio_locally(url: str, filename: str,log: bool = False):
+def save_audio_locally(url: str, filename: str):
     try:
         if not url or not filename:
             return {"success": False}
 
-        # Check if video and audio already exist
-        video_path = VIDEO_DIR / filename
+        # Check if audio already exists
         video_name = os.path.splitext(filename)[0]
         audio_path = AUDIO_DIR / f"{video_name}.mp3"
         
-        if video_path.exists() and audio_path.exists():
-            if log:
-                print("Video and audio already exist, skipping download and processing")
-            video_url = f"/reels/video/{filename}"
+        if audio_path.exists():
+            logger.info("Audio already exists, skipping download and processing")
             audio_filename = f"{video_name}.mp3"
             audio_url = f"/reels/audio/{audio_filename}"
             return {
                 "success": True,
-                "video": video_url,
                 "audio": audio_url
             }
 
-        if log:
-            print("Downloading video")
+        logger.info("Downloading video")
         video_path = download_reel(url, filename)
-        if log:
-            if video_path:
-                print("Video downloaded")
-            else:
-                print("Failed to download video")
-        if log:
-            print("Converting video to audio")
+        if video_path:
+            logger.info("Video downloaded")
+        else:
+            logger.error("Failed to download video")
+            
         if not video_path:
             return {"success": False}
 
-        if log:
-            print("Compressing video")
+        logger.info("Converting video to audio")
         audio_path = video_to_audio(video_path)
+        
+        # Delete the video file after extracting audio
+        try:
+            if os.path.exists(video_path):
+                os.remove(video_path)
+                logger.info("Video file deleted after audio extraction")
+        except Exception as e:
+            logger.warning(f"Failed to delete video file: {e}")
+        
         if not audio_path:
             return {"success": False}
         
-        video_url = f"/reels/video/{filename}"
         audio_filename = os.path.basename(audio_path)
         audio_url = f"/reels/audio/{audio_filename}"
 
         return {
             "success": True,
-            "video": video_url,
             "audio": audio_url
         }
-    except Exception:
+    except Exception as e:
+        logger.error(f"Error in save_audio_locally: {e}")
         return {"success": False}
 
 def download_reel(url: str, filename: str) -> str:
@@ -90,7 +92,8 @@ def download_reel(url: str, filename: str) -> str:
                 if chunk:
                     writer.write(chunk)
         return str(file_path)
-    except Exception:
+    except Exception as e:
+        logger.error(f"Error downloading reel: {e}")
         return None
 
 def video_to_audio(video_path: str) -> str:
@@ -104,5 +107,6 @@ def video_to_audio(video_path: str) -> str:
             return None
         extract_audio(input_path=video_path, output_path=str(audio_path))
         return str(audio_path)
-    except Exception:
+    except Exception as e:
+        logger.error(f"Error converting video to audio: {e}")
         return None

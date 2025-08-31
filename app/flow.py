@@ -1,9 +1,19 @@
 import json
 import os
-from app.steps.step_1_get_url_from_link import get_link_from_url
-from app.steps.step_2_save_video_and_audio_locally import save_video_and_audio_locally
-from app.steps.step_3_get_audio_transcription import audio_to_text
+import logging
+from modules.wed_data_extractor.pipeline import get_wed_data
+from app.steps.get_url_from_link import get_link_from_url
+from app.steps.save_audio_locally import save_audio_locally
+from app.steps.get_audio_transcription import audio_to_text
 from app.steps.claims_extractor import extract_claims
+
+# Setup logging with timestamp
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+logger = logging.getLogger(__name__)
 
 def load_data():
     """Load existing data from db/data.json"""
@@ -21,30 +31,26 @@ def save_data(data):
     with open('db/data.json', 'w') as f:
         json.dump(data, f, indent=2)
 
-async def check_authenticity(url: str, log: bool = False):
+async def check_authenticity(url: str):
     # Load existing data
     data = load_data()
     
-    # Use URL as key for caching
+
     url_key = url.strip()
     
-    if log:
-        results = {}
+    results = {}
 
     # Check if we already have complete results for this URL
     if url_key in data and data[url_key].get('claims'):
-        if log:
-            print("Found cached results for this URL")
-            return data[url_key]
-        return data[url_key]['claims']
+        logger.info("Found cached results for this URL")
+        return data[url_key]
 
     # Initialize entry for this URL if it doesn't exist
     if url_key not in data:
         data[url_key] = {}
 
     # get the link from the url
-    if log:
-        print("Getting link from url")
+    logger.info("Getting link from url")
     
     # Check if we already have the link
     if 'link' not in data[url_key]:
@@ -53,51 +59,41 @@ async def check_authenticity(url: str, log: bool = False):
         save_data(data)
     else:
         link = data[url_key]['link']
-        if log:
-            print("Using cached link")
+        logger.info("Using cached link")
     
-    if log:
-        results['link'] = link
-        if link.get('success'):
-            print("Link found")
-        else:
-            print("Link not found")
+    results['link'] = link
+    if link.get('success'):
+        logger.info("Link found")
+    else:
+        logger.error("Link not found")
     if not link.get('success'):
-        if log:
-            results['final'] = link
-            return results
-        return link
+        results['final'] = link
+        return results
         
 
     # save the video and audio locally
-    if log:
-        print("Saving video and audio locally")
+    logger.info("Saving video and audio locally")
     
     # Check if we already have video and audio
     if 'video_and_audio' not in data[url_key]:
-        video_and_audio = save_video_and_audio_locally(link['videoUrl'], link['filename'], log)
+        video_and_audio = save_audio_locally(link['videoUrl'], link['filename'])
         data[url_key]['video_and_audio'] = video_and_audio
         save_data(data)
     else:
         video_and_audio = data[url_key]['video_and_audio']
-        if log:
-            print("Using cached video and audio")
+        logger.info("Using cached video and audio")
     
-    if log:
-        results['video_and_audio'] = video_and_audio
-        if video_and_audio.get('success'):
-            print("Video and audio saved locally")
-        else:
-            print("Failed to save video and audio locally")
+    results['video_and_audio'] = video_and_audio
+    if video_and_audio.get('success'):
+        logger.info("Video and audio saved locally")
+    else:
+        logger.error("Failed to save video and audio locally")
     if not video_and_audio.get('success'):
-        if log:
-            results['final'] = video_and_audio
-            return results
-        return video_and_audio
+        results['final'] = video_and_audio
+        return results
 
     # get the transcription of the audio
-    if log:
-        print("Getting transcription of audio")
+    logger.info("Getting transcription of audio")
     
     # Check if we already have transcription
     if 'transcription' not in data[url_key]:
@@ -106,37 +102,30 @@ async def check_authenticity(url: str, log: bool = False):
         save_data(data)
     else:
         transcription = data[url_key]['transcription']
-        if log:
-            print("Using cached transcription")
+        logger.info("Using cached transcription")
     
-    if log:
-        results['transcription'] = transcription
-        if transcription:
-            print("Transcription generated")
-        else:
-            print("Failed to get transcription")
+    results['transcription'] = transcription
+    if transcription:
+        logger.info("Transcription generated")
+    else:
+        logger.error("Failed to get transcription")
     if not transcription:
         fail_msg = {'success': False, 'message': 'Failed to get transcription'}
-        if log:
-            results['final'] = fail_msg
-            return results
-        return fail_msg
-
-    # Extract claims
-    if 'claims' not in data[url_key]:
-        claims = extract_claims(transcription)
-        data[url_key]['claims'] = claims
-        save_data(data)
-    else:
-        claims = data[url_key]['claims']
-        if log:
-            print("Using cached claims")
-    
-    if log:
-        results['claims'] = claims
-        if claims:
-            print("Claims extracted")
-        else:
-            print("Failed to extract claims")
+        results['final'] = fail_msg
         return results
-    return claims
+    claims = extract_claims(transcription)
+    logger.info(f" {len(claims)} Claims extracted")
+    relavent_content = []
+    for claim in claims:
+        content = await get_wed_data(claim['claim'])
+        relavent_content.append({'claim': claim['claim'], 'content': content})
+    results['relavent_content'] = relavent_content
+    if relavent_content:
+        logger.info("Relavent content found")
+    else:
+        logger.error("Failed to find relavent content")
+    if not relavent_content:
+        fail_msg = {'success': False, 'message': 'Failed to find relavent content'}
+        results['final'] = fail_msg
+        return results
+    return results
