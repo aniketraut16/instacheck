@@ -27,7 +27,7 @@ Respond now:"""
         "prompt": prompt,
         "stream": False,
         "options": {
-            "temperature": 0.0,  # Lower temperature for more consistent JSON output
+            "temperature": 0.0, 
             "top_p": 0.9
         }
     }

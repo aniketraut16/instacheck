@@ -1,3 +1,4 @@
+from fastapi import WebSocket
 import json
 import os
 import logging
@@ -8,7 +9,7 @@ from app.steps.get_audio_transcription import audio_to_text
 from app.steps.claims_extractor import extract_claims
 from app.steps.claim_verifier import verify_claim
 from app.steps.responce_generator import generate_responce
-# Setup logging with timestamp
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -17,7 +18,6 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 def load_data():
-    """Load existing data from db/data.json"""
     if os.path.exists('db/data.json'):
         try:
             with open('db/data.json', 'r') as f:
@@ -27,28 +27,23 @@ def load_data():
     return {}
 
 def save_data(data):
-    """Save data to db/data.json"""
     os.makedirs('db', exist_ok=True)
     with open('db/data.json', 'w') as f:
         json.dump(data, f, indent=2)
 
-async def check_authenticity(url: str):
-    # Load existing data
+async def check_authenticity(websocket: WebSocket = None,url: str = None):
     data = load_data()
-    
 
     url_key = url.strip()
     
     results = {}
 
-    # Initialize entry for this URL if it doesn't exist
     if url_key not in data:
         data[url_key] = {}
 
-    # get the link from the url
     logger.info("Getting link from url")
+    await websocket.send_text(json.dumps({"step": "processing", "message": "Extracting link from url"}))
     
-    # Check if we already have the link
     if 'link' not in data[url_key]:
         link = get_link_from_url(url)
         data[url_key]['link'] = link
@@ -60,17 +55,18 @@ async def check_authenticity(url: str):
     results['link'] = link
     if link.get('success'):
         logger.info("Link found")
+        await websocket.send_text(json.dumps({"step": "success", "message": "Extracted link from url"}))
     else:
         logger.error("Link not found")
+        await websocket.send_text(json.dumps({"step": "error", "message": "Invalid URL"}))
     if not link.get('success'):
         results['final'] = link
         return results
         
 
-    # save the video and audio locally
     logger.info("Saving video and audio locally")
+    await websocket.send_text(json.dumps({"step": "processing", "message": "Saving video and audio locally"}))
     
-    # Check if we already have video and audio
     if 'video_and_audio' not in data[url_key]:
         video_and_audio = save_audio_locally(link['videoUrl'], link['filename'])
         data[url_key]['video_and_audio'] = video_and_audio
@@ -82,16 +78,17 @@ async def check_authenticity(url: str):
     results['video_and_audio'] = video_and_audio
     if video_and_audio.get('success'):
         logger.info("Video and audio saved locally")
+        await websocket.send_text(json.dumps({"step": "success", "message": "Video and audio saved locally"}))
     else:
         logger.error("Failed to save video and audio locally")
+        await websocket.send_text(json.dumps({"step": "error", "message": "Failed to save video and audio locally"}))
     if not video_and_audio.get('success'):
         results['final'] = video_and_audio
         return results
 
-    # get the transcription of the audio
     logger.info("Getting transcription of audio")
+    await websocket.send_text(json.dumps({"step": "processing", "message": "Getting audio transcription"}))
     
-    # Check if we already have transcription
     if 'transcription' not in data[url_key]:
         transcription = audio_to_text(video_and_audio['audio'])
         data[url_key]['transcription'] = transcription
@@ -103,14 +100,16 @@ async def check_authenticity(url: str):
     results['transcription'] = transcription
     if transcription:
         logger.info("Transcription generated")
+        await websocket.send_text(json.dumps({"step": "success", "message": "Audio transcription generated"}))
     else:
         logger.error("Failed to get transcription")
+        await websocket.send_text(json.dumps({"step": "warning", "message": "Failed to get audio transcription, proceeding with video analysis"}))
     if not transcription:
         fail_msg = {'success': False, 'message': 'Failed to get transcription'}
         results['final'] = fail_msg
         return results
     
-    # Check if we already have claims
+    await websocket.send_text(json.dumps({"step": "processing", "message": "Extracting claims from transcription"}))
     if 'claims' not in data[url_key]:
         claims = extract_claims(transcription)
         data[url_key]['claims'] = claims
@@ -119,30 +118,61 @@ async def check_authenticity(url: str):
         claims = data[url_key]['claims']
         logger.info("Using cached claims")
     logger.info(f" {len(claims)} Claims extracted")
+
+    await websocket.send_text(json.dumps({"step": "success", "message": f"There are {len(claims)} claims made in the video"}))
+    if not claims:
+        fail_msg = {'success': False, 'message': 'Failed to extract claims'}
+        results['final'] = fail_msg
+        await websocket.send_text(json.dumps({"step": "error", "message": "There are no claims made in the video"}))
+        return 
+    
+    await websocket.send_text(json.dumps({"step": "processing", "message": "Verifying claims with web data"}))
     relavent_content = []
     for claim in claims:
-        content = await get_wed_data(claim['claim'])
+        content = await get_wed_data(claim['claim'],websocket=websocket)
         evidence_list = [result['snippet'] for result in content['results']]
+        await websocket.send_text(json.dumps({"step": "processing", "message": f"Verifying claim: {claim['claim'][:100]}..."}))
         result = verify_claim(claim['claim'], evidence_list)
+        await websocket.send_text(json.dumps({"step": "success", "message": f"Claim: {claim['claim'][:100]}... verified"}))
         relavent_content.append({'claim': claim['claim'], 'content': content, 'result': result})
     results['relavent_content'] = relavent_content
     if relavent_content:
         logger.info("Relavent content found")
+        await websocket.send_text(json.dumps({"step": "success", "message": "Claims verified with web data"}))
     else:
         logger.error("Failed to find relavent content")
+        await websocket.send_text(json.dumps({"step": "error", "message": "Failed to find relevant content"}))
     if not relavent_content:
         fail_msg = {'success': False, 'message': 'Failed to find relavent content'}
         results['final'] = fail_msg
         return results
+    
+    await websocket.send_text(json.dumps({"step": "processing", "message": "Generating final response"}))
     formatted_data = [{'claim': item['claim'], 'verfication_result': item['result']} for item in relavent_content]
     responce = generate_responce(formatted_data)
     results['responce'] = responce
     if responce:
         logger.info("Responce generated")
+        await websocket.send_text(json.dumps({"step": "completed", "message": "Final response generated", "response": responce}))
     else:
         logger.error("Failed to generate responce")
+        await websocket.send_text(json.dumps({"step": "error", "message": "Failed to generate response"}))
     if not responce:
         fail_msg = {'success': False, 'message': 'Failed to generate responce'}
         results['final'] = fail_msg
         return results
-    return results
+    final_msg = {
+        "final_msg":responce,
+        "claims": []
+    }
+    for items in relavent_content:
+        item = {
+            'claim': items['claim'],
+            'verfication_result': items['result'],
+            'sources': []
+        }
+        for source in items['content']['results']:
+            item['sources'].append(source['url'])
+        final_msg['claims'].append(item)
+    await websocket.send_text(json.dumps({"step": "completed", "message": "Final response generated", "response": final_msg}))
+    return 
