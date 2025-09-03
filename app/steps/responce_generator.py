@@ -2,7 +2,7 @@ from typing import List
 import logging
 from modules.llm_clients.client import get_llm_client
 logger = logging.getLogger(__name__)
-def generate_responce(data: List[dict]) -> str:
+async def generate_responce(data: List[dict]) -> str:
     formatted_data = "\n".join([f"Claim: {item['claim']}\nVerfication Result: {item['verfication_result']}" for item in data])
     prompt = f"""You are a video authenticity analyst. After thoroughly examining a video's content and fact-checking its claims, provide your final assessment.
 
@@ -22,5 +22,5 @@ INSTRUCTIONS:
 
 Respond now:"""
     
-    raw_response = get_llm_client(prompt)
+    raw_response = await get_llm_client(prompt)
     return raw_response

@@ -4,7 +4,7 @@ from modules.llm_clients.client import get_llm_client
 
 logger = logging.getLogger(__name__)
 
-def extract_claims(transcription: str):   
+async def extract_claims(transcription: str):   
     if not transcription or not transcription.strip():
         raise ValueError("Transcription cannot be empty")
     
@@ -57,7 +57,7 @@ RESPOND WITH JSON ONLY - NO OTHER TEXT. If no significant verifiable claims exis
     
     try:
         logger.info(f"Extracting claims from transcription: {transcription[:100]}...")
-        raw_response = get_llm_client(prompt)
+        raw_response = await get_llm_client(prompt)
         
         # Clean and parse JSON response
         try:

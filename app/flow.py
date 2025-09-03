@@ -111,7 +111,7 @@ async def check_authenticity(websocket: WebSocket = None,url: str = None):
     
     await websocket.send_text(json.dumps({"step": "processing", "message": "Extracting claims from transcription"}))
     if 'claims' not in data[url_key]:
-        claims = extract_claims(transcription)
+        claims = await extract_claims(transcription)
         data[url_key]['claims'] = claims
         save_data(data)
     else:
@@ -132,7 +132,7 @@ async def check_authenticity(websocket: WebSocket = None,url: str = None):
         content = await get_wed_data(claim['claim'],websocket=websocket)
         evidence_list = [result['snippet'] for result in content['results']]
         await websocket.send_text(json.dumps({"step": "processing", "message": f"Verifying claim: {claim['claim'][:100]}..."}))
-        result = verify_claim(claim['claim'], evidence_list)
+        result = await verify_claim(claim['claim'], evidence_list)
         await websocket.send_text(json.dumps({"step": "success", "message": f"Claim: {claim['claim'][:100]}... verified"}))
         relavent_content.append({'claim': claim['claim'], 'content': content, 'result': result})
     results['relavent_content'] = relavent_content
@@ -149,7 +149,7 @@ async def check_authenticity(websocket: WebSocket = None,url: str = None):
     
     await websocket.send_text(json.dumps({"step": "processing", "message": "Generating final response"}))
     formatted_data = [{'claim': item['claim'], 'verfication_result': item['result']} for item in relavent_content]
-    responce = generate_responce(formatted_data)
+    responce = await generate_responce(formatted_data)
     results['responce'] = responce
     if responce:
         logger.info("Responce generated")
