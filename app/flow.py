@@ -153,7 +153,6 @@ async def check_authenticity(websocket: WebSocket = None,url: str = None):
     results['responce'] = responce
     if responce:
         logger.info("Responce generated")
-        await websocket.send_text(json.dumps({"step": "completed", "message": "Final response generated", "response": responce}))
     else:
         logger.error("Failed to generate responce")
         await websocket.send_text(json.dumps({"step": "error", "message": "Failed to generate response"}))
@@ -174,5 +173,6 @@ async def check_authenticity(websocket: WebSocket = None,url: str = None):
         for source in items['content']['results']:
             item['sources'].append(source['url'])
         final_msg['claims'].append(item)
+        print(final_msg)
     await websocket.send_text(json.dumps({"step": "completed", "message": "Final response generated", "response": final_msg}))
     return 

@@ -12,16 +12,37 @@ def extract_claims(transcription: str, model_name: str = "gpt-oss:20b", base_url
     
     # Enhanced prompt for better claim extraction
     prompt = f"""
-You are an expert fact-checker and information analyst. Your task is to extract the CORE verifiable claims from this Instagram Reel transcription.
+You are an expert fact-checker and information analyst. Your task is to extract ONLY the most important verifiable claims from this Instagram Reel transcription.
 
 CRITICAL INSTRUCTIONS:
-- Extract ONLY 1-3 claims that capture the ESSENTIAL information of the entire text
+- Extract ONLY the MOST SIGNIFICANT claims that are worth fact-checking
+- If video is not worth checking like its a meme or a random video, return an empty array
+- For simple content with basic information: Extract 1-2 claims maximum
+- For complex content with multiple important facts: Extract maximum 3 claims
 - Each claim must be COMPLETELY INDEPENDENT and self-contained
 - Include ALL specific details: exact names, precise dates, specific numbers, locations, companies
 - NO vague references like "this product", "that company", "recent studies" - be EXPLICITLY specific
 - NO subjective opinions, theories, or unverifiable statements
-- Focus on the MAIN points that someone would fact-check
-- Minimize the number of claims while maximizing information coverage
+- NO personal experiences, lifestyle tips, or general advice
+- Focus ONLY on factual statements that can be verified through reliable sources
+- If the content is mainly opinion, entertainment, or personal stories, return an empty array
+
+WHAT QUALIFIES AS A VERIFIABLE CLAIM:
+- Specific medical/health facts with numbers or studies
+- Political statements about policies or events
+- Financial data, stock prices, economic statistics
+- Scientific discoveries or research findings
+- Historical facts with specific dates/events
+- Product specifications or company announcements
+- Legal or regulatory changes
+
+WHAT DOES NOT QUALIFY:
+- Personal opinions or experiences
+- General advice or tips
+- Entertainment content
+- Lifestyle recommendations
+- Subjective reviews
+- Motivational content
 
 RESPONSE FORMAT:
 Return ONLY a valid JSON array. Each object must have exactly these fields:
@@ -33,7 +54,7 @@ CATEGORIES: health_medical, political_news, celebrity_gossip, financial_market, 
 TRANSCRIPTION:
 {transcription.strip()}
 
-RESPOND WITH JSON ONLY - NO OTHER TEXT:
+RESPOND WITH JSON ONLY - NO OTHER TEXT. If no significant verifiable claims exist, return an empty array []:
 """
 
     api_url = f"{base_url}/api/generate"
@@ -54,7 +75,7 @@ RESPOND WITH JSON ONLY - NO OTHER TEXT:
             api_url,
             json=payload,
             headers={"Content-Type": "application/json"},
-            timeout=120
+            timeout=180
         )
         response.raise_for_status()
         
@@ -77,11 +98,23 @@ RESPOND WITH JSON ONLY - NO OTHER TEXT:
                 json_str = raw_response[start_idx:end_idx]
                 claims_data = json.loads(json_str)
                 
-                if isinstance(claims_data, list) and len(claims_data) > 0:
-                    logger.info(f"Successfully extracted {len(claims_data)} claims")
-                    return claims_data
+                if isinstance(claims_data, list):
+                    # Filter out any claims that might be too generic or not worth verifying
+                    filtered_claims = []
+                    for claim in claims_data:
+                        if isinstance(claim, dict) and claim.get('claim'):
+                            claim_text = claim['claim'].lower()
+                            # Skip claims that are too generic or opinion-based
+                            if not any(skip_word in claim_text for skip_word in [
+                                'i think', 'i believe', 'in my opinion', 'personally', 
+                                'you should', 'try this', 'works for me', 'recommend'
+                            ]):
+                                filtered_claims.append(claim)
+                    
+                    logger.info(f"Successfully extracted {len(filtered_claims)} claims")
+                    return filtered_claims
                 else:
-                    logger.warning("Empty or invalid claims list")
+                    logger.warning("Invalid claims format")
                     return []
             else:
                 logger.error("No valid JSON array found in response")

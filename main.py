@@ -13,6 +13,7 @@ app.add_middleware(
     allow_headers=["*"],  # Authorization, Content-Type...
 )
 
+
 @app.websocket("/api/checkAuthenticityWS")
 async def check_authenticity_endpoint(websocket: WebSocket):
     await websocket.accept()
