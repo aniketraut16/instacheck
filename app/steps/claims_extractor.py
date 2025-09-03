@@ -1,12 +1,10 @@
-import requests
 import json
 import logging
+from modules.llm_clients.client import get_llm_client
 
-# Setup logging
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def extract_claims(transcription: str, model_name: str = "gpt-oss:20b", base_url: str = "http://localhost:11434"):   
+def extract_claims(transcription: str):   
     if not transcription or not transcription.strip():
         raise ValueError("Transcription cannot be empty")
     
@@ -56,31 +54,10 @@ TRANSCRIPTION:
 
 RESPOND WITH JSON ONLY - NO OTHER TEXT. If no significant verifiable claims exist, return an empty array []:
 """
-
-    api_url = f"{base_url}/api/generate"
-    payload = {
-        "model": model_name,
-        "prompt": prompt,
-        "stream": False,
-        "options": {
-            "temperature": 0.0,  # Lower temperature for more consistent JSON output
-            "top_p": 0.9
-        }
-    }
     
     try:
         logger.info(f"Extracting claims from transcription: {transcription[:100]}...")
-        
-        response = requests.post(
-            api_url,
-            json=payload,
-            headers={"Content-Type": "application/json"},
-            timeout=180
-        )
-        response.raise_for_status()
-        
-        result = response.json()
-        raw_response = result.get("response", "").strip()
+        raw_response = get_llm_client(prompt)
         
         # Clean and parse JSON response
         try:
@@ -124,33 +101,6 @@ RESPOND WITH JSON ONLY - NO OTHER TEXT. If no significant verifiable claims exis
             logger.error(f"JSON parsing failed: {e}")
             logger.error(f"Raw response: {raw_response}")
             return []
-            
-    except requests.exceptions.ConnectionError:
-        logger.error(f"Could not connect to Ollama at {base_url}. Make sure Ollama is running.")
-        return []
-    except requests.exceptions.Timeout:
-        logger.error("Ollama API request timed out")
-        return []
     except Exception as e:
         logger.error(f"Claim extraction failed: {e}")
-        return []
-
-def check_ollama_connection(base_url: str = "http://localhost:11434") -> bool:
-    """Check if Ollama is running and accessible."""
-    try:
-        response = requests.get(f"{base_url}/api/tags", timeout=5)
-        response.raise_for_status()
-        return True
-    except:
-        return False
-
-def list_available_models(base_url: str = "http://localhost:11434") -> list:
-    """Get list of available models in Ollama."""
-    try:
-        response = requests.get(f"{base_url}/api/tags", timeout=10)
-        response.raise_for_status()
-        models = response.json().get("models", [])
-        return [model.get("name", "") for model in models]
-    except Exception as e:
-        logger.error(f"Could not fetch available models: {e}")
         return []
