@@ -110,13 +110,7 @@ async def check_authenticity(websocket: WebSocket = None,url: str = None):
         return results
     
     await websocket.send_text(json.dumps({"step": "processing", "message": "Extracting claims from transcription"}))
-    if 'claims' not in data[url_key]:
-        claims = await extract_claims(transcription)
-        data[url_key]['claims'] = claims
-        save_data(data)
-    else:
-        claims = data[url_key]['claims']
-        logger.info("Using cached claims")
+    claims = await extract_claims(transcription)
     logger.info(f" {len(claims)} Claims extracted")
 
     await websocket.send_text(json.dumps({"step": "success", "message": f"There are {len(claims)} claims made in the video"}))
