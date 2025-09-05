@@ -1,0 +1,15 @@
+services:
+  instacheck:
+    build:
+      context: .
+    image: instacheck:latest       # 👈 explicit image name
+    container_name: instacheck
+    command: python run.py  
+    volumes:
+      - .:/app             # Mount code into container for live reload
+      - ./.env:/app/.env   # Mount env file
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - OLLAMA_API_BASE=http://host.docker.internal:11434

@@ -9,7 +9,7 @@ class Settings:
     SECRET_KEY: str = os.getenv("SECRET_KEY")
 
 class LLMSettings:
-    provider: str = "groq" # ollama or groq
+    provider: str = "ollama" # ollama or groq
     api_key: str = os.getenv("GROQ_API_KEY") if provider == "groq" else None
 
 

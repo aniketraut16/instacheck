@@ -1,7 +1,6 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from app.flow import check_authenticity
-from modules.wed_data_extractor.pipeline import get_wed_data
 import json
 app = FastAPI()
 

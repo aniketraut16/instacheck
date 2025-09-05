@@ -2,24 +2,27 @@ from groq import Groq
 import requests
 from core.config import llm_settings
 import logging
+import os
 
 logger = logging.getLogger(__name__)
+
+# Read Ollama base URL from environment, fallback to localhost
+OLLAMA_BASE_URL = os.getenv("OLLAMA_API_BASE", "http://localhost:11434")
 
 
 async def get_llm_client(prompt: str):
     if llm_settings.provider == "ollama":
         try:
-            if not check_ollama_connection():
+            if not check_ollama_connection(OLLAMA_BASE_URL):
                 logger.error("Ollama is not running")
                 return None
             
-            models = list_available_models()
+            models = list_available_models(OLLAMA_BASE_URL)
             if "gpt-oss:20b" not in models:
                 logger.error("gpt-oss:20b model is not available")
                 return None
             
-            base_url: str = "http://localhost:11434"
-            api_url = f"{base_url}/api/generate"
+            api_url = f"{OLLAMA_BASE_URL}/api/generate"
             payload = {
                 "model": "gpt-oss:20b",
                 "prompt": prompt,
@@ -69,7 +72,7 @@ async def get_llm_client(prompt: str):
             return None
 
 
-def check_ollama_connection(base_url: str = "http://localhost:11434") -> bool:
+def check_ollama_connection(base_url: str = OLLAMA_BASE_URL) -> bool:
     """Check if Ollama is running and accessible."""
     try:
         response = requests.get(f"{base_url}/api/tags", timeout=5)
@@ -79,7 +82,7 @@ def check_ollama_connection(base_url: str = "http://localhost:11434") -> bool:
         return False
 
 
-def list_available_models(base_url: str = "http://localhost:11434") -> list:
+def list_available_models(base_url: str = OLLAMA_BASE_URL) -> list:
     """Get list of available models in Ollama."""
     try:
         response = requests.get(f"{base_url}/api/tags", timeout=10)
