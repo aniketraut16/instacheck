@@ -33,7 +33,7 @@ This Code of Conduct applies within all project spaces—including GitHub issues
 
 ## Enforcement
 
-Instances of abusive, harassing, or otherwise unacceptable behavior may be reported by contacting the maintainers at [aniketraut16@gmail.com](mailto:aniketraut16@gmail.com) or by opening a confidential GitHub issue.
+Instances of abusive, harassing, or otherwise unacceptable behavior may be reported by contacting the maintainers at [rautnaniket@gmail.com](mailto:rautnaniket@gmail.com) or by opening a confidential GitHub issue.
 
 All complaints will be reviewed and investigated and will result in a response that is deemed necessary and appropriate to the circumstances. The project team is obligated to maintain confidentiality with regard to the reporter of an incident.
 
