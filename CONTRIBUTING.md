@@ -40,7 +40,7 @@ Please review our [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md); we are committed to 
 1. **Fork the repository**
 2. **Clone your fork:**  
    ```bash
-   git clone https://github.com/<your-username>/instacheck
+   git clone https://github.com/aniketraut16/instacheck
    ```
 3. **Create your feature branch:**  
    ```bash
