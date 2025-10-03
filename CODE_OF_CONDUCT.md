@@ -44,24 +44,3 @@ This Code of Conduct is adapted from the [Contributor Covenant](https://www.cont
 ***
 
 **Thank you for helping to make InstaCheck—and open source—a safe, inclusive, and healthy community for everyone!**
-
-[1](https://docs.github.com/en/communities/setting-up-your-project-for-healthy-contributions/adding-a-code-of-conduct-to-your-project)
-[2](https://opensource.guide/code-of-conduct/)
-[3](https://chromium.googlesource.com/chromium/src/+/main/)
-[4](https://source.chromium.org/chromium/chromium/src/+/main:CODE_OF_CONDUCT.md)
-[5](https://openresource.dev/articles/how-to-create-a-code-of-conduct-for-an-open-source-project/)
-[6](https://tech.timonwa.com/blog/finding-your-first-opensource-project)
-[7](https://github.com/seapagan/fastapi-template)
-[8](https://www.geeksforgeeks.org/git/how-to-add-code-of-conduct-to-your-project-on-github/)
-[9](https://www.freecodecamp.org/news/project-maintainer-guide-to-hacktoberfest/)
-[10](https://github.com/kumarsonu676/python-fastapi-starter-api-project)
-[11](https://chromewebstore.google.com/detail/markdown-viewer/ckkdlimhmcjmikdlpkmbgfkaikojcbjk?hl=en)
-[12](https://learn.microsoft.com/en-us/contribute/content/hacktoberfest)
-[13](https://github.com/zhanymkanov/fastapi-best-practices)
-[14](https://www.contributor-covenant.org)
-[15](https://forum.defold.com/t/hacktoberfest-2024/78318)
-[16](https://github.com/topics/fastapi-template)
-[17](https://chromium.googlesource.com/v8/v8.git/+show/ed7204bbde1d9980f1588b952c96a90e634648aa/CODE_OF_CONDUCT.md)
-[18](https://kushaldas.hashnode.dev/hacktoberfest-everything-you-need-to-know)
-[19](https://github.com/ONSdigital/ons-python-template)
-[20](https://hacktoberfest.com/participation/)
